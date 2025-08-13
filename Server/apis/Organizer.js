@@ -4,19 +4,23 @@ const organizerApp=express.Router();
 const {Organizer}=require('../models/organizer.model');
 const {verifyUser}=require('../middlewares/verifyUser');
 const {Events}=require('../models/event.model');
+organizerApp.get('/getdetails',verifyUser,async(req,res)=>{
+  try{
+   const userId=req.userId;
+   const organizerDetails=await Organizer.findById(userId);
+   return res.status(200).json({
+    payload:organizerDetails
+   })
+  }catch(e){ 
+    res.status(403).json({
+      message:"unauthorized access"
+    })
+  }
+})
 organizerApp.put('/update/profiledetails', verifyUser,  async (req, res) => {
   try {
     const userId = req.userId;
     let updatedData = { ...req.body };
-
-    
-    // if (req.file) {
-    //   const uploadResult = await uploadOnCloudinary(req.file.path);
-    //   if (uploadResult) {
-    //     updatedData.logo = uploadResult.url;
-    //   }
-    // }
-
     const updatedOrganiser = await Organizer.findByIdAndUpdate(
       userId,
       { $set: updatedData },

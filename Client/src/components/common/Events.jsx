@@ -27,7 +27,14 @@ function Events() {
     getEvents()
   }, []);
   function callEventByid(eventObj){
-      navigate(`../${eventObj._id}`)
+      if(user?.role === 'student'){
+  navigate(`/student-profile/${user.emailId}/viewevent/${eventObj._id}`);
+} else if(user?.role === 'organizer'){
+  navigate(`/organizer-profile/${user.emailId}/viewevent/${eventObj._id}`);
+} else if(user?.role === 'admin'){
+  navigate(`/admin-profile/${user.emailId}/viewevent/${eventObj._id}`);
+}
+
   }
 const isActive = (registrationEndDate, enrolled, maxLimit) => {
   const today = new Date();
@@ -35,12 +42,13 @@ const isActive = (registrationEndDate, enrolled, maxLimit) => {
   return regEndDate >= today && enrolled < maxLimit;
 };
   return (
-    <div className="flex flex-wrap flex-row gap-4 p-4">
+    <div className="flex flex-wrap flex-row gap-4 p-4 bg-black h-screen">
       {
         events.map((obj, idx) => (
-          <div key={idx} className='min-h-52 bg-gray-500 min-w-60 max-w-60 max-h-80 flex flex-col rounded-lg border border-white'>
-            <div className='p-2'>
-              <img src={obj.eventImage} alt=""  className="w-52 h-24  " style={{ borderRadius: "10px" }} />
+          <div key={idx} className='min-h-52 bg-black min-w-60 max-w-60 max-h-80 flex flex-col rounded-lg  border border-[rgba(8,112,184,0.7)] 
+mt-24'>
+            <div className=''>
+              <img src={obj.eventImage} alt=""  className="w-full h-40 mb-3 rounded-t" />
             </div>
             <div className='px-4 pb-4 text-white'>
               <div className='flex justify-between items-center mb-2'>
@@ -55,27 +63,25 @@ const isActive = (registrationEndDate, enrolled, maxLimit) => {
                 <p>End Date : {new Date(obj.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
               </div>
               <div className='mt-2 ml-2 '>
-                <div className='bg-black py-1 px-2 rounded-md'>
-                  <p className='text-xs text-center ml-1'> Seats Left: <span className='font-semibold text-xs '>{obj.maxLimit - obj.enrolled}</span></p>
+                <div className='bg-white text-black py-1 px-2 rounded-md'>
+                  <p className='text-xs text-center text-black ml-1'> Seats Left: <span className='font-semibold text-xs '>{obj.maxLimit - obj.enrolled}</span></p>
                 </div>
   
-
               </div>
       </div>
               
 
-              <p className='text-xs mb-2'>{obj.description.substring(0, 80) + "..."}</p>
 
               <div className="flex items-center justify-between">
-<span className={`bg-black p-2 rounded-md text-xs font-semibold ${isActive(obj.registrationEndDate, obj.enrolled, obj.maxLimit) ? 'text-green-400' : 'text-red-400'}`}>
+<span className={`bg-white p-2 rounded-md text-xs font-semibold ${isActive(obj.registrationEndDate, obj.enrolled, obj.maxLimit) ? 'text-green-400' : 'text-red-400'}`}>
   {isActive(obj.registrationEndDate, obj.enrolled, obj.maxLimit) ? (
-    <span className="flex items-center gap-1"><GoDotFill className='text-white animate-blink' /> Active</span>
+    <span className="flex items-center gap-1"><GoDotFill className='text-black animate-blink' /> Active</span>
   ) : (
-    <span className="flex items-center gap-1"><GoDotFill className='text-white' />Closed</span>
+    <span className="flex items-center gap-1"><GoDotFill className='text-black' />Closed</span>
   )}
 </span>
 
-                <button className='text-sm hover:text-white hover:bg-gray-800 bg-black px-4 py-1 rounded-md flex' onClick={()=>callEventByid(obj)}>
+                <button className='text-sm hover:text-white hover:bg-gray-800 bg-white text-black fs-bold px-4 py-1 rounded-md flex' onClick={()=>callEventByid(obj)}>
                   Go to event
                   <BsArrowUpRightCircle className='m-1 ml-2'/>
                 </button>

@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 function RootLayout() {
   return (
-    <div>
+    <div >
       <Header/>
       <div className='min-h-screen'>
         <Outlet/>

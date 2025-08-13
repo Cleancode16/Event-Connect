@@ -3,7 +3,11 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { BsArrowUpRightCircle } from "react-icons/bs";
+import { useRecoilValue } from 'recoil';
+import { userAtom } from '../UserAtom';
+
 function ClubEvents() {
+  const user = useRecoilValue(userAtom);
   const { clubById } = useParams();
   const [events, setEvents] = useState([]);
   const navigate=useNavigate()
@@ -30,8 +34,13 @@ function ClubEvents() {
     }
   }, []);
 function geteventdetails(eventId){
-  navigate(`../${eventId}`);
+  if (user?.email) {
+    navigate(`/student-profile/${user.email}/viewevent/${eventId}`);
+  } else {
+    alert("User not logged in");
+  }
 }
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4 ">Events of Club </h1>
