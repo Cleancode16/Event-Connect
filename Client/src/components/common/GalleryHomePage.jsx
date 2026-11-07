@@ -7,7 +7,21 @@ import { useRecoilValue } from 'recoil';
 import { userAtom } from '../UserAtom';
 import { Page, PageHeader, EmptyState, Spinner, listVariants, itemVariants } from '../ui/Page';
 
-const FALLBACK_LOGO = 'https://turinghut.org/static/9384c958bbd95db9f010ee70a3bdaee1/078c3/turinghut_logo.webp';
+// Local backup image (Client/public), shown when a club has no logo or its logo URL fails to load
+const FALLBACK_LOGO = '/club-placeholder.svg';
+
+function getLogoSrc(logo) {
+  const url = typeof logo === 'string' ? logo.trim() : '';
+  return url || FALLBACK_LOGO;
+}
+
+// Swap to the backup once if the real logo errors (404, deleted Cloudinary asset, blocked host)
+function handleLogoError(e) {
+  const img = e.currentTarget;
+  if (!img.src.endsWith(FALLBACK_LOGO)) {
+    img.src = FALLBACK_LOGO;
+  }
+}
 
 function GalleryHomePage() {
   const [clubs,setClubs]=useState([]);
@@ -67,8 +81,10 @@ function GalleryHomePage() {
             >
               <div className='mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-[#fff] p-3 shadow-[0_8px_30px_-8px_rgb(var(--glass-shadow))]'>
                 <img
-                  src={club.logo || FALLBACK_LOGO}
-                  alt={Array.isArray(club.clubName) ? club.clubName.join(', ') : club.clubName}
+                  src={getLogoSrc(club.logo)}
+                  onError={handleLogoError}
+                  loading='lazy'
+                  alt={`${Array.isArray(club.clubName) ? club.clubName.join(', ') : club.clubName} logo`}
                   className='h-full w-full object-contain transition duration-500 group-hover:scale-110'
                 />
               </div>

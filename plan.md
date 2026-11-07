@@ -296,3 +296,67 @@ Checked: all table-of-contents links resolve to headings (fixed a pre-existing b
 - ESLint `no-undef` with the project config: clean ✅. The probe on the merged `Footer.jsx` reports the 2 errors, so the check works. Note: ESLint without the project config skips `.jsx` files and reports nothing.
 - `vite build` to a temp folder: built OK ✅
 - Not run: the dev server / browser (you test). Restart `npm run dev` so Vite picks up the new `.env`.
+
+---
+
+## Phase 11 — README rewritten as a knowledge-transfer guide (done)
+
+**Request:** a README with features, workflows, LLD, HLD, sequence flows, setup, and everything a student needs as knowledge transfer.
+**Found:** the merge `178175d` had also replaced the 996-line README (Phases 1 and 9) with a short one. The full version was restored from `80ae69d` and extended.
+
+| Change | Details |
+|---|---|
+| Restored | Features, tech stack, UI & design system, project structure, HLD, LLD (ER, class, component tree, sequence diagrams, state machines), API reference, routes, validation |
+| New, Part A (knowledge transfer) | Start Here (1-minute overview, mental model, 5 key facts), Glossary, Getting Started (with first-run checklist), Environment Variables (with examples), User Workflows (student/organizer/admin flowcharts, Home tabs by role), How a Request Flows Through the Code (enroll walkthrough, file by file) |
+| New sequence diagrams | 7. page refresh & logout (client session), 8. theme toggle |
+| New, Part C (working on the project) | How to Add a Feature (API endpoint, page, styling rules), Development Workflow & Checks (git, merge-conflict lesson, lint/build), Deployment (Vercel + Node host + Atlas), Troubleshooting table, Learning Path (day-by-day reading order + starter tasks), Credits |
+| Corrected to match the code | `PORT` (uppercase) is shared by the API and the mailers; `Boolean("false")` makes `SECURE` always true; `validEventData` isn't attached to the create route; enrollment doesn't check seats; sign-in navigates by **username**; admin route has no index page; only `Auth.js` uses `bcrypt` (`Admin.js` uses `bcryptjs`); `routes.jsx` + `LandingPageLayout.jsx` unused; client needs `VITE_API_URL` |
+
+Verified: every internal `#anchor` link resolves to a heading; 19 Mermaid blocks. Note: the existing `npx eslint src` reports 37 errors in existing code (mostly unused variables). The README tells contributors not to add new ones.
+
+---
+
+## Phase 12 — Club gallery: missing logos + backup image (done — please test)
+
+**Problem:** club logos are missing in the gallery.
+**Cause:** the fallback was used only when `logo` was empty. A saved URL that fails to load (deleted Cloudinary asset, failed upload, blocked host) showed a broken image. The fallback itself was hot-linked from `turinghut.org` (another club's real logo, can be blocked by hot-link protection).
+
+| # | Step | Files |
+|---|---|---|
+| 12.1 | Local backup image: neutral monochrome "club building" tile, matches the B&W design | `Client/public/club-placeholder.svg` (new) |
+| 12.2 | `getLogoSrc()` trims the URL and falls back when empty; `onError` swaps to the backup once (no loop if the backup fails); `loading="lazy"`; alt text "<club> logo" | `common/GalleryHomePage.jsx` |
+
+Verified: esbuild parse ✅. ESLint on the file shows only the existing `motion` false positive (JSX member usage).
+Note: `Client/.env` currently has only `VITE_API_URL`. Organizer signup uploads the logo with `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET`. Without them the upload fails, so new clubs can't register with a logo.
+
+---
+
+## Phase 13 — Registration (verification) emails (done — please test)
+
+**Problem:** registration emails don't arrive reliably.
+
+| # | Cause (from code review) | Fix | File |
+|---|---|---|---|
+| 13.1 | Sender login read `process.env.USER`. `dotenv` never overrides existing variables, and Git Bash / macOS / Linux / most hosts already set `USER` to the login name, so Gmail got the wrong username | New shared mailer reads `USER`/`PASS` straight from `Server/.env` (or `MAIL_USER`/`MAIL_PASS`), and only accepts a value that looks like an email | `utils/mailer.js` (new) |
+| 13.2 | SMTP port was `Number(process.env.PORT)`: the API's port, `NaN` locally | Own `MAIL_PORT`, default `465` | `utils/mailer.js` |
+| 13.3 | `secure: Boolean(process.env.SECURE)` → `Boolean("false")` is `true` | `MAIL_SECURE` parsed as text; default from port (465 → TLS) | `utils/mailer.js` |
+| 13.4 | App Password copied with spaces | Spaces removed | `utils/mailer.js` |
+| 13.5 | Send errors were swallowed, so signup always said "email sent" | `sendVerificationEmail` throws; signup returns `emailSent` and an honest message | `utils/mailer.js`, `apis/Auth.js` |
+| 13.6 | Unverified sign-in re-sent only when no token existed, so after a failed send nothing was re-sent for 1h | Every unverified sign-in re-sends (reuses the unexpired token); responds 403 `{ message, needsVerification, emailSent }` | `apis/Auth.js` |
+| 13.7 | No way to see a bad Gmail login until someone signs up | `verifyMailer()` runs at startup: prints `Mailer ready: …` or `Mailer NOT ready — …` with an App Password hint | `utils/mailer.js`, `server.js` |
+| 13.8 | Plain-text email with a bare link | HTML email with a "Verify email" button + plain-text fallback, subject "Verify your Event Connect email" | `utils/mailer.js` |
+| 13.9 | Trailing slash in `BASE_URL` gave `//verifyPage` | Trailing slashes stripped; default `http://localhost:5173` | `apis/Auth.js` |
+| 13.10 | Duplicate email/username/phone → 500 "Something went wrong" | 409 "An account with this email already exists" | `apis/Auth.js` |
+| 13.11 | Zod errors were a generic "Invalid data" (organizer used Zod 3's `.errors`, undefined in Zod 4) | First issue in the message, e.g. "Invalid password: …" | `apis/Auth.js` |
+| 13.12 | Client always showed "Something went wrong" / "Invalid credentials" | SignUp shows the server message (and a Cloudinary hint), then goes to Sign In; SignIn shows "verify your email" as an info toast | `SignUp.jsx`, `SignIn.jsx` |
+| 13.13 | Signup response included the user document (with password hash) | Removed from the response (the client didn't use it) | `apis/Auth.js` |
+
+`sendUserEmail.js` / `sendOrganiserEmail.js` stay as thin wrappers, so existing imports still work. README env table, structure, class diagram, troubleshooting and known issues updated.
+
+Verified: `node --check` on all changed server files ✅; esbuild parse of SignIn/SignUp ✅; ESLint `no-undef` clean ✅. Not run: the server, real email sending (you test).
+
+### How to test
+1. Restart the server. The console must show **`Mailer ready: <your gmail> via smtp.gmail.com:465`**. If it shows `Mailer NOT ready`, the reason follows (usually `PASS` isn't an App Password).
+2. Sign up a new student → message "We sent a verification link to …" → you land on Sign In → email arrives (check spam) → click → "verified" → sign in.
+3. Sign in with an unverified account → info toast "Please verify your email first. We sent a new link…" and a new email.
+4. Sign up again with the same email → "An account with this email already exists".

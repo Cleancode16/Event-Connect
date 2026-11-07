@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
+  <title>Club logo placeholder</title>
+  <rect width="96" height="96" rx="20" fill="#F4F4F5"/>
+  <rect x="0.5" y="0.5" width="95" height="95" rx="19.5" stroke="#E4E4E7"/>
+  <g stroke="#52525B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 72h48"/>
+    <path d="M30 72V44"/>
+    <path d="M42 72V44"/>
+    <path d="M54 72V44"/>
+    <path d="M66 72V44"/>
+    <path d="M26 44h44"/>
+    <path d="M48 22 26 36h44L48 22Z"/>
+  </g>
+</svg>
