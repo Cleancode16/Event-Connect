@@ -47,7 +47,15 @@ export default function SignIn() {
       }
     } catch (error) {
       console.error("Login error:", error.response?.data || error.message);
-      toast.error('Invalid credentials, unable to sign in');
+      const data = error.response?.data;
+      if (data?.needsVerification) {
+        // Unverified account: the server just (re)sent the verification link
+        (data.emailSent ? toast.info : toast.warn)(data.message, { autoClose: 8000 });
+      } else if (!error.response) {
+        toast.error('Cannot reach the server. Is it running?');
+      } else {
+        toast.error(data?.message || 'Invalid credentials, unable to sign in');
+      }
     }
   }
 

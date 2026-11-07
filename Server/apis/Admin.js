@@ -39,8 +39,10 @@ const validAdmin=async(req,res,next)=>{
   const response=await Admin.findById(req.userId
   )
   if(response){
-  next();
+  return next();
   }
+  // Not an admin: answer instead of leaving the request hanging
+  return res.status(403).json({ message:"Admin access only" })
   }catch(e){
     res.status(411).json({
       message:"unauthorized access"

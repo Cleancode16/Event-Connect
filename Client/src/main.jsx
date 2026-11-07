@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import { BrowserRouter, Route, Routes, createRoutesFromElements } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import RootLayout from './RootLayout'
 import LandingPage from './components/common/LandingPage'
 import SignUp from './components/common/SignUp'
@@ -64,6 +64,7 @@ function Main() {
           </Route>
           
           <Route path='admin-profile/:emailId'>
+            <Route index element={<AdminDashBoard/>}/>
             <Route path='dashboard' element={<AdminDashBoard/>}/>
             <Route path='manageEvents' element={<ManageEvents/>}/>
             <Route path='viewevent/:eventById' element={<EventsById/>}/>

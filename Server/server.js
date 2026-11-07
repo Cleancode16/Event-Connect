@@ -30,4 +30,6 @@ app.use('/student',studentApp);
 app.use('/admin',adminApp);
 app.listen(port,()=>{
   console.log("server is running on the backend server on port ",port);
+  // Checks the Gmail login once at startup; prints a clear error if emails can't be sent
+  require('./utils/mailer').verifyMailer();
 });

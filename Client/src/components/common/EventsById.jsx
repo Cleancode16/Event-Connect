@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {useForm} from 'react-hook-form'
 import {useRecoilValue} from 'recoil'
 import axios from 'axios';
@@ -63,7 +63,6 @@ function InfoPanel({ title, children }) {
 
 function EventsById() {
   const [edit,setEdit]=useState(false);
-  const [commentEdit,setCommentEdit]=useState(false);
    const {eventById}=useParams();
   const navigate=useNavigate()
 const { register, handleSubmit, formState: { errors },reset,setValue} = useForm({
@@ -147,55 +146,6 @@ const payload = {
     alert('Error updating event');
   }
 }
-  async function handleFormSubmit(data) {
-    console.log('Form submitted:', data);
-    console.log('FAQs:', faqs);
-
-    const eventImageUrl = data.eventImage?.[0]
-        ? await uploadToCloudinary(data.eventImage[0])
-        : '';
-      const certificateImageUrl = data.sampleCertificate?.[0]
-        ? await uploadToCloudinary(data.sampleCertificate[0])
-        : '';
- const payload = {
-        eventName: data.eventName,
-        description: data.description,
-        maxLimit: data.maxLimit,
-        enrolled: 0,
-        category: data.category,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        sampleCertificate: certificateImageUrl,
-        registrationFee: data.registrationFee,
-        venue: data.venue,
-        keyTakeAways: data.keyTakeAways,
-        isApproved: false,
-        rewardPoints: data.rewardPoints,
-        registrationForm: data.registrationForm,
-        registrationEndDate: data.registrationEndDate,
-        endTime: data.endTime,
-        eventImage: eventImageUrl,
-        faqs: faqs,
-        venueAddress: data.venueAddress,
-      };
-
-     
-    
-try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/event/app/v1/create`, payload, {
-        headers: { 'Authorization':localStorage.getItem("token")},
-      });
-      if (res.status === 200) {
-        alert(res.data.message);
-      } else {
-        alert('Invalid Data');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Something went wrong');
-    }
-  }
-    
     const [expandedID, setExpandedID] = useState(null);
     const [comments, setComments] = useState([]);
     const [currentArticle,setCurrentArticle]=useState();
@@ -309,12 +259,12 @@ const res=await axios.put(`${import.meta.env.VITE_API_URL}/event/app/v1/comment/
 });
 if(res.status==200){
     setComments(res.data.payload); 
-  setCommentEdit(false);
   setCommentEditText(null)
   setCommentIdstore(null);
   alert(res.data.message);
 }
 }catch(e){
+  console.error(e);
   alert('error in updating the comment');
 }
 }
@@ -588,7 +538,6 @@ if(res.status==200){
                             type="button"
                             onClick={() => {
                               setCommentIdstore(null);
-                              setCommentEdit(false);
                             }}
                             className="btn-ghost px-4 py-2"
                           >

@@ -5,8 +5,6 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { userAtom } from '../UserAtom';
-import { useRecoilValue } from 'recoil';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { Page, PageHeader } from '../ui/Page';
@@ -25,7 +23,6 @@ function PostEvent() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm();
   const [faqs, setFaqs] = useState([{ question: '', answer: '' }]);
   const { width, height } = useWindowSize();
-  const user = useRecoilValue(userAtom);
   const [posted, setPosted] = useState(false);
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;

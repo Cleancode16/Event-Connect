@@ -1,7 +1,7 @@
 const exp=require('express');
 const authRouter=exp.Router();
 const jwt=require('jsonwebtoken');
-const bcrypt=require('bcrypt');
+const bcrypt=require('bcryptjs'); // bcryptjs is the dependency in package.json; reads existing bcrypt hashes
 const mongoose=require('mongoose');
 const {Student}=require('../models/student.model')
 const z=require('zod');
@@ -12,6 +12,39 @@ const {Organizer}=require('../models/organizer.model');
 const {OrganizerToken}=require('../models/tokenOrganiser');
 const {sendOrganiserEmail}=require('../utils/sendOrganiserEmail')
 const User = require('./User');
+
+// Link the user clicks in the email. Matches the client route /verifyPage/:role/:id/:token
+function verificationUrl(role, id, token) {
+  const base = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/+$/, '');
+  return `${base}/verifyPage/${role}/${id}/${token}`;
+}
+
+// Sends the email and reports success instead of throwing, so signup/signin can tell the user the truth
+async function trySendVerification(sendFn, email, url) {
+  try {
+    await sendFn(email, 'Verify Email', url);
+    return true;
+  } catch (e) {
+    console.error(`Verification email to ${email} failed:`, e.message);
+    return false;
+  }
+}
+
+// Reuse the unexpired token if there is one (old links keep working), otherwise create one
+async function getOrCreateToken(TokenModel, userId) {
+  const existing = await TokenModel.findOne({ userId });
+  if (existing) return existing;
+  return new TokenModel({ userId, token: crypto.randomBytes(32).toString('hex') }).save();
+}
+
+// Mongo duplicate key (unique username / email / phone / club name)
+function duplicateMessage(e) {
+  if (e?.code !== 11000) return null;
+  const field = Object.keys(e.keyPattern || e.keyValue || {})[0] || 'field';
+  const label = { phoneNumber: 'phone number', clubName: 'club name' }[field] || field;
+  return `An account with this ${label} already exists`;
+}
+
 const validStudentDataSignup=(req,res,next)=>{
   const {username,password,email,phoneNumber,collegeName,department,year,role}=req.body;
   const userProfileSchema=z.object({
@@ -32,10 +65,11 @@ department:z.string(),
 year:z.number(),
 role:z.string()
   });
-  const {success}=userProfileSchema.safeParse(req.body);
-  if(!success){
+  const result=userProfileSchema.safeParse(req.body);
+  if(!result.success){
+    const issue=result.error.issues?.[0];
     res.status(411).json({
-      message:"Invalid data"
+      message: issue ? `Invalid ${issue.path.join('.') || 'data'}: ${issue.message}` : "Invalid data"
     })
     return;
   }
@@ -44,7 +78,6 @@ role:z.string()
 }
 authRouter.post('/student/signUp',validStudentDataSignup,async(req,res)=>{
   try {
-    console.log(req.body);
     const {username,password,email,phoneNumber,collegeName,department,year,role}=req.body;
     const hashedPassword=await bcrypt.hash(password,5);
     const Data=await new Student({
@@ -61,19 +94,17 @@ authRouter.post('/student/signUp',validStudentDataSignup,async(req,res)=>{
       userId:Data._id,
       token:crypto.randomBytes(32).toString("hex"),
     }).save();
-    const url=`${process.env.BASE_URL}/verifyPage/${Data.role}/${Data._id}/${token.token}`;
-    await sendEmail(Data.email,"Verify Email",url);
-    if(Data){
-      res.status(200).json({
-        message:"An Email sent to your please verify email",
-        payload:Data
-      })
-    }else{
-      res.status(404).json({
-        message:"user not created"
-      })
-    }
+    const url=verificationUrl(Data.role,Data._id,token.token);
+    const emailSent=await trySendVerification(sendEmail,Data.email,url);
+    res.status(200).json({
+      message: emailSent
+        ? `Account created. We sent a verification link to ${Data.email}. It expires in 1 hour (check spam too).`
+        : "Account created, but we couldn't send the verification email. Try signing in later to get a new link.",
+      emailSent
+    })
   } catch (e) {
+    const dup=duplicateMessage(e);
+    if(dup) return res.status(409).json({ message: dup });
     console.error(e);
     res.status(500).json({ message: 'Something went wrong' });
   }
@@ -138,19 +169,17 @@ authRouter.post('/student/signin',validUserData,async(req,res)=>{
     
     if(validPassword){
      if(!StudentResponse.verified){
-     let emailtoken=await StudentToken.findOne({userId:StudentResponse._id});
-     if(!emailtoken){
-      const token=await new StudentToken({
-     userId:StudentResponse._id,
-     token:crypto.randomBytes(32).toString("hex"),
-   }).save();
-   const url=`${process.env.BASE_URL}/verifyPage/${StudentResponse.role}/${StudentResponse._id}/${token.token}`;
-   await sendEmail(StudentResponse.email,"Verify Email",url);
-   
-     }
-     return res.status(400).send({
-       messages:'An email sent to your account please'
-     })
+      // Always (re)send: the earlier email may have failed or been lost
+      const token=await getOrCreateToken(StudentToken,StudentResponse._id);
+      const url=verificationUrl(StudentResponse.role,StudentResponse._id,token.token);
+      const emailSent=await trySendVerification(sendEmail,StudentResponse.email,url);
+      return res.status(403).send({
+        message: emailSent
+          ? `Please verify your email first. We sent a new link to ${StudentResponse.email}.`
+          : "Please verify your email first. We couldn't send the link right now, try again in a few minutes.",
+        needsVerification:true,
+        emailSent
+      })
     }
      const secret=process.env.JWT_SECRET;
      const token=jwt.sign({userId:StudentResponse._id},secret);
@@ -221,7 +250,11 @@ logo:z.string()
   const result = userProfileSchema.safeParse(parsedData);
 
   if (!result.success) {
-    return res.status(411).json({ message: "invalid data", error: result.error.errors });
+    const issue = result.error.issues?.[0];
+    return res.status(411).json({
+      message: issue ? `Invalid ${issue.path.join('.') || 'data'}: ${issue.message}` : "Invalid data",
+      error: result.error.issues
+    });
   }
 
   // Attach parsed data to req.body for downstream use
@@ -286,21 +319,17 @@ authRouter.post('/organizer/signUp',validOrganiserDataSignup,async(req,res)=>{
       userId:Data._id,
       token:crypto.randomBytes(32).toString("hex"),
     }).save();
-    const url=`${process.env.BASE_URL}/verifyPage/${Data.role}/${Data._id}/${token.token}`;
-    await sendOrganiserEmail(Data.email,"Verify Email",url);
-    
-    
-    if(Data){
-      res.status(200).json({
-        message:"Email sent to your email id please verify forn 2 step authentication",
-        payload:Data
-      })
-    }else{
-      res.status(404).json({
-        message:"user not created"
-      })
-    }
+    const url=verificationUrl(Data.role,Data._id,token.token);
+    const emailSent=await trySendVerification(sendOrganiserEmail,Data.email,url);
+    res.status(200).json({
+      message: emailSent
+        ? `Account created. We sent a verification link to ${Data.email}. It expires in 1 hour (check spam too).`
+        : "Account created, but we couldn't send the verification email. Try signing in later to get a new link.",
+      emailSent
+    })
   } catch (e) {
+    const dup=duplicateMessage(e);
+    if(dup) return res.status(409).json({ message: dup });
     console.error(e);
     res.status(500).json({ message: 'Something went wrong' });
   }
@@ -317,19 +346,17 @@ authRouter.post('/organizer/signin',validUserData,async(req,res)=>{
     const validPassword=await bcrypt.compare(password,OrganizerResponse.password);
     if(validPassword){
      if(!OrganizerResponse.verified){
-     let emailtoken=await OrganizerToken.findOne({userId:OrganizerResponse._id});
-     if(!emailtoken){
-      const token=await new OrganizerToken({
-     userId:OrganizerResponse._id,
-     token:crypto.randomBytes(32).toString("hex"),
-   }).save();
-   const url=`${process.env.BASE_URL}/verifyPage/${OrganizerResponse.role}/${OrganizerResponse._id}/${token.token}`;
-   await sendOrganiserEmail(OrganizerResponse.email,"Verify Email",url);
-   
-     }
-     return res.status(400).send({
-       messages:'An email sent to your account please'
-     })
+      // Always (re)send: the earlier email may have failed or been lost
+      const token=await getOrCreateToken(OrganizerToken,OrganizerResponse._id);
+      const url=verificationUrl(OrganizerResponse.role,OrganizerResponse._id,token.token);
+      const emailSent=await trySendVerification(sendOrganiserEmail,OrganizerResponse.email,url);
+      return res.status(403).send({
+        message: emailSent
+          ? `Please verify your email first. We sent a new link to ${OrganizerResponse.email}.`
+          : "Please verify your email first. We couldn't send the link right now, try again in a few minutes.",
+        needsVerification:true,
+        emailSent
+      })
     }
      const secret=process.env.JWT_SECRET;
      const token=jwt.sign({userId:OrganizerResponse._id},secret,{expiresIn:"1h"});

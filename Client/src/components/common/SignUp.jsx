@@ -34,7 +34,7 @@ export default function SignUp() {
 
         if (res.status === 200) {
           alert(res.data.message);
-          // navigate somewhere if needed
+          navigate("/signin");
         } else {
           alert("Invalid data");
         }
@@ -66,14 +66,21 @@ export default function SignUp() {
 
         if (res.status === 200) {
           alert(res.data.message);
-          // navigate somewhere if needed
+          navigate("/signin");
         } else {
           alert("Invalid data");
         }
       }
     } catch (err) {
       console.error(err);
-      alert('Something went wrong');
+      if (err.config?.url?.includes('api.cloudinary.com')) {
+        alert('Logo upload failed. Check VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in Client/.env.');
+      } else if (!err.response) {
+        alert('Cannot reach the server. Is it running?');
+      } else {
+        // e.g. "An account with this email already exists", "Invalid password: ..."
+        alert(err.response.data?.message || 'Something went wrong');
+      }
     }
   }
 

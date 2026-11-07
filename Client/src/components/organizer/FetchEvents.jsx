@@ -19,6 +19,7 @@ function FetchEvents() {
           setEvents(res.data.payload);
         }
       }catch(e){
+       console.error(e);
        alert("unable to fetch the events");
       }
     }
