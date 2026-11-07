@@ -1,5 +1,8 @@
-import React from 'react';
-import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa';
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
+import { useRecoilValue } from 'recoil'
+import { userAtom } from '../UserAtom'
 
 function Footer() {
   const user = useRecoilValue(userAtom);
@@ -13,60 +16,35 @@ function Footer() {
       ];
 
   return (
-    <footer className="bg-gray-800 text-white py-8 ">
-      <div className="container mx-auto px-2 ">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* About Section */}
-          <div className="mb-0">
-            <h2 className="text-2xl font-bold mb-4">EventConnect</h2>
-            <p className="text-gray-400">
-              Your one-stop platform for discovering and managing events. Join our community and never miss out on exciting opportunities.
-            </p>
-          </div>
-
-          {/* Quick Links Section */}
-          <div className="mb-8 md:mb-0">
-            <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
-            <ul>
-              <li className="mb-2"><a href="/" className="hover:text-gray-300">Home</a></li>
-              <li className="mb-2"><a href="/events" className="hover:text-gray-300">Events</a></li>
-              <li className="mb-2"><a href="/about" className="hover:text-gray-300">About Us</a></li>
-              <li className="mb-2"><a href="/contact" className="hover:text-gray-300">Contact</a></li>
-            </ul>
-          </div>
-
-          {/* Contact Info Section */}
-          <div className="mb-8 md:mb-0">
-            <h3 className="text-xl font-semibold mb-4">Contact Us</h3>
-            <p className="text-gray-400">Hyderabad</p>
-            <p className="text-gray-400">Email: info@eventconnect.com</p>
-             </div>
-
-          {/* Social Media Section */}
+    <motion.footer
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className='px-2 pb-6 pt-10 sm:px-4 md:px-6'
+    >
+      <div className='glass mx-auto flex max-w-6xl flex-col gap-6 rounded-3xl px-5 py-6 text-sm text-neutral-400 sm:flex-row sm:items-center sm:justify-between sm:px-8'>
+        <div className='flex items-center gap-3'>
           <div>
-            <h3 className="text-xl font-semibold mb-4">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
-                <FaFacebook size={24} />
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
-                <FaTwitter size={24} />
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
-                <FaInstagram size={24} />
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
-                <FaLinkedin size={24} />
-              </a>
-            </div>
+            <p className='font-semibold text-white'>Event Connect</p>
+            <p className='text-xs'>Every campus event, one place.</p>
           </div>
         </div>
-        <div className="mt-8 border-t border-gray-700 pt-4 text-center text-gray-500">
-          <p>&copy; {new Date().getFullYear()} EventConnect. All rights reserved.</p>
-        </div>
+
+        {links.length > 0 && (
+          <nav className='flex flex-wrap gap-x-6 gap-y-2'>
+            {links.map((link) => (
+              <Link key={link.to} to={link.to} className='transition-colors duration-200 hover:text-white'>
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+
+        <p className='text-xs'>© {year} Event Connect. All rights reserved.</p>
       </div>
-    </footer>
-  );
+    </motion.footer>
+  )
 }
 
-export default Footer;
+export default Footer

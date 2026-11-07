@@ -36,12 +36,13 @@ function RootLayout() {
   const contentOffset = sidebarVisible ? (sidebarOpen ? 'md:ml-64' : 'md:ml-24') : '';
 
   return (
-    <div className=" ">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       <Header/>
       <div className="relative flex flex-grow">
         <Sidebar />
-        <div className={`flex-grow transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-16'} pt-14 overflow-y-auto`}>
-          <main className="w-full px-2 sm:px-4 md:px-6 py-4">
+        <div className={`flex-grow transition-[margin] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${contentOffset}`}>
+          {/* pt clears the floating header (top-4 + h-14 + gap) */}
+          <main className="w-full px-3 pb-4 pt-24 sm:px-6">
             <Outlet/>
           </main>
           <Footer/>
