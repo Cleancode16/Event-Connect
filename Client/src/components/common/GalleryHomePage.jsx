@@ -10,7 +10,7 @@ import { Page, PageHeader, EmptyState, Spinner, listVariants, itemVariants } fro
 const FALLBACK_LOGO = 'https://turinghut.org/static/9384c958bbd95db9f010ee70a3bdaee1/078c3/turinghut_logo.webp';
 
 function GalleryHomePage() {
-  const [clubs,setClubs]=useState([]);
+  const [clubs,setClubs] = useState([]);
   const [loading,setLoading]=useState(true);
   const navigate=useNavigate();
   const user = useRecoilValue(userAtom);
