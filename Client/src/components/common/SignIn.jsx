@@ -18,7 +18,7 @@ export default function SignIn() {
       if (data.role === 'student') {
         res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/student/signin`, data);
       } else if (data.role === 'admin') {
-        res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/admin/signin`, data);
+        res = await axios.post(`${import.meta.env.VITE_API_URL}/admin/signin`, data);
       } else {
         res = await axios.post(`${import.meta.env.VITE_API_URL}/auth/organizer/signin`, data);
       }

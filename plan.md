@@ -1,4 +1,4 @@
-![1792865435872](image/plan/1792865435872.png)![1792865438757](image/plan/1792865438757.png)![1792865449604](image/plan/1792865449604.png)![1792865454280](image/plan/1792865454280.png)# Event Connect — Change Plan & Log
+# Event Connect — Change Plan & Log
 
 Running record of every change made to this project, newest phase last.
 Each step lists the files touched and how it was verified.
@@ -271,4 +271,28 @@ Checked: all table-of-contents links resolve to headings (fixed a pre-existing b
 
 ### Notes / limitations
 - The circular theme reveal needs the View Transitions API (Chromium). Elsewhere it falls back to an instant switch.
-- 3D tilt turns off on touch screens and for reduced-motion users.
+- Dock magnification turns off on touch screens and below 768px; reduced-motion users get no press animation.
+
+---
+
+## Phase 10 — Fix errors from the merge commit `178175d` (done — please test)
+
+**Problem:** the merge `178175d` ("Merge branch 'main' into main") resolved conflicts by taking the older branch in some files. It broke the build and undid parts of Phases 2–5.
+
+| # | Error | Cause | Fix | File |
+|---|---|---|---|---|
+| 10.1 | Build fails: `Unexpected closing "Page" tag does not match opening "div" tag` | Merge kept the old `<div className="… bg-black">` opener but the new `</Page>` closer | Restored the Phase 3/5 `Page` + `PageHeader` + `Spinner` + `EmptyState` block | `common/Events.jsx` |
+| 10.2 | Runtime crash: `useRecoilValue` / `userAtom` is not defined | Merge replaced the imports with the old footer's imports but kept the new body | Restored the Phase 2 glass footer | `common/Footer.jsx` |
+| 10.3 | Header lost the floating rounded pill, theme toggle, mobile sidebar button | Merge took the pre-Phase 2 header | Restored the Phase 5 header | `common/Header.jsx` |
+| 10.4 | Content hidden under the floating header; sidebar offset wrong (`md:ml-16`, `pt-14`) | Merge took the old layout | Restored the Phase 4/5 layout (`md:ml-64` / `md:ml-24`, `pt-24`) | `RootLayout.jsx` |
+| 10.5 | Admin sign-in 404 | Client called `/auth/admin/signin`; the server mounts admin at `/admin` (`server.js:30`) | Changed back to `/admin/signin` | `common/SignIn.jsx` |
+| 10.6 | All API calls go to `undefined/...` locally | The merge switched URLs to `import.meta.env.VITE_API_URL`, but there was no `Client/.env` | Added `Client/.env` with `VITE_API_URL=http://localhost:4000` (gitignored; set the same variable in Vercel for production) | `Client/.env` (new) |
+
+**Kept from the merge:** every API URL now uses `VITE_API_URL` (production-ready).
+**Not used:** `routes.jsx` and `LandingPageLayout.jsx` (new from the merge). `main.jsx` defines the routes itself and never imports them. Left untouched.
+
+### Verification (10.7)
+- esbuild: every `.js`/`.jsx` in `src` parses ✅ (`Events.jsx` failed before the fix)
+- ESLint `no-undef` with the project config: clean ✅. The probe on the merged `Footer.jsx` reports the 2 errors, so the check works. Note: ESLint without the project config skips `.jsx` files and reports nothing.
+- `vite build` to a temp folder: built OK ✅
+- Not run: the dev server / browser (you test). Restart `npm run dev` so Vite picks up the new `.env`.
