@@ -79,7 +79,8 @@ export default function SignIn() {
               type="email"
               id="email"
               placeholder="you@college.edu"
-              {...register('email', { required: true })}
+              autoComplete="email"
+                {...register('email', { required: true })}
               className="field"
             />
             {errors.email?.type === 'required' && (
@@ -93,7 +94,8 @@ export default function SignIn() {
               type="password"
               id="password"
               placeholder="••••••••"
-              {...register('password', {
+              autoComplete="current-password"
+                {...register('password', {
                 required: 'Password is required',
                 pattern: {
                   value: /^(?=.*[a-zA-Z])(?=.*\d)(?=.*@).{8,}$/,

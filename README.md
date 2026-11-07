@@ -161,6 +161,8 @@ Then sign in on `/signin` with the role set to Admin.
 | `HOST` | `smtp.gmail.com` | SMTP host (default `smtp.gmail.com`). `MAIL_HOST` also works |
 | `MAIL_PORT` | `465` | Optional. SMTP port (default `465`) |
 | `MAIL_SECURE` | `true` | Optional. `true` for port 465, `false` for 587. Defaults from the port |
+| `BREVO_API_KEY` | `xkeysib-…` | Optional. Sends email through the Brevo HTTPS API instead of Gmail SMTP. **Needed on Render's free plan**, which blocks SMTP ports |
+| `MAIL_FROM` | `you@gmail.com` | Sender address for Brevo (must be verified in Brevo → Senders). Defaults to `USER` |
 | `SERVICE`, `SECURE` | | No longer read (replaced by `MAIL_PORT` / `MAIL_SECURE`). Safe to leave in the file |
 | `BASE_URL` | `http://localhost:5173` | Frontend origin used inside verification links |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | | Reserved for server-side uploads (currently unused) |
@@ -1255,10 +1257,12 @@ Add a short entry to `plan.md` for every change: what, which files, how it was c
 | Part | Where | Notes |
 |---|---|---|
 | Client | Vercel (`Client/vercel.json` rewrites every path to `/` so React Router handles deep links) | Set `VITE_API_URL`, `VITE_CLOUDINARY_CLOUD_NAME`, `VITE_CLOUDINARY_UPLOAD_PRESET` in the Vercel project settings. Build command `npm run build`, output `dist` |
-| Server | Any Node host (Render, Railway, ...) | Start command `npm start`. Set every `Server/.env` key. Set `BASE_URL` to the deployed client URL so verification links work |
+| Server | Render (`event-connect-backend-slbb.onrender.com`) or any Node 18+ host | Root directory `Server`, build `npm install`, start `npm start`. Set every `Server/.env` key in the dashboard. Set `BASE_URL` to the deployed client URL so verification links work. **Free Render blocks SMTP**: set `BREVO_API_KEY` + `MAIL_FROM` |
 | Database | MongoDB Atlas | Allow the server's IP in Network Access |
 
 After deploying the server, update `VITE_API_URL` on Vercel and redeploy the client. Vite bakes env values in at build time.
+
+**Is the new server code live?** Send an invalid signup: `curl -X POST <server>/auth/student/signUp -H "Content-Type: application/json" -d '{"username":"x"}'`. Current code answers `Invalid username: …`; old code answers just `Invalid data`. Also check the Render logs for `Mailer ready: …`.
 
 ---
 
@@ -1271,6 +1275,8 @@ After deploying the server, update `VITE_API_URL` on Vercel and redeploy the cli
 | No verification email | Wrong `USER`/`PASS`, or `PASS` isn't an App Password; mail in spam | At startup the server prints `Mailer ready: ...` or `Mailer NOT ready — ...` with the reason. Fix `.env`, restart, then sign in to get a new link |
 | Verification link says "invalid link" | Token older than 1 hour (deleted by TTL) or already used | Sign in again: a new link is emailed |
 | Sign in says "Please verify your email first" | Account not verified yet | A new link is emailed on every such sign-in attempt. Click it |
+| Sign up returns **500** on the deployed site | Render is still running old code (old code returns 500 for a duplicate email/username/phone) | Redeploy the latest commit on Render (Manual Deploy → Deploy latest commit), then use the check under [Deployment](#deployment) |
+| Deployed: signup works but no email arrives | Render's free plan blocks SMTP; logs show `Mailer NOT ready — … timeout` | Set `BREVO_API_KEY` and `MAIL_FROM` in Render → Environment |
 | Sign up says "An account with this email already exists" | You registered earlier (maybe the email failed) | Sign in instead: it re-sends the verification link |
 | Organizer suddenly gets 401 | Organizer JWT expires after 1 hour | Log out and sign in |
 | Images don't upload | `VITE_CLOUDINARY_*` missing, or the preset is "Signed" | Set both variables; make the preset Unsigned |

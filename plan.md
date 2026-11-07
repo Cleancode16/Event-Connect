@@ -393,3 +393,33 @@ README updated (lint status, API table, routes, known issues, troubleshooting, s
 - `vite build` to a temp folder: 8913 modules, built OK ✅
 - `node --check` on every server file ✅; `bcryptjs` hash + compare round-trip ✅
 - Not run: the dev server / browser (you test): sign in as student, organizer and admin; open Participants; open two different clubs from the Gallery.
+
+---
+
+## Phase 15 — 500 on `/auth/student/signUp` (deployed, Render) (done — needs a redeploy)
+
+**Report:** `event-connect-backend-slbb.onrender.com/auth/student/signUp` → 500.
+
+**Findings (probes that save nothing):**
+- `GET /organiser/get/organiserDetails` → 200 in 0.6s, so the server and MongoDB are up.
+- `POST /auth/student/signUp` with `{"username":"x"}` → `{"message":"Invalid data"}`. That's the **old** code (the current code answers `Invalid username: …`). **Render has not deployed** the Phase 13/14 commits, even though both GitHub repos (`Vinaykumarp2005/Event-Connect` and `Cleancode16/Event-Connect`) have them.
+- The old code returns 500 for a duplicate email/username/phone and logs into Gmail with the wrong `USER`.
+
+| # | Fix | File |
+|---|---|---|
+| 15.1 | Removed `const { useState } = require('react')` (accidental auto-import from an old commit). `react` isn't a server dependency, so a clean install (Render) can crash with `Cannot find module 'react'`. Locally it only worked because React sits in a parent folder | `Server/apis/Event.js` |
+| 15.2 | Checked that every server module loads using only `Server/node_modules` (the same as a clean Render install) ✅ | — |
+| 15.3 | Render's free plan blocks outgoing SMTP ports, so Gmail SMTP can't send from there. Added optional **Brevo** HTTPS API: set `BREVO_API_KEY` (+ `MAIL_FROM`, a sender verified in Brevo). Without it, Gmail SMTP is used as before. The startup log says which one is active, with a hint on timeouts | `Server/utils/mailer.js` |
+| 15.4 | `"engines": { "node": ">=18" }` (Brevo uses the built-in `fetch`) | `Server/package.json` |
+| 15.5 | README: env vars, Render deployment, "is the new code live?" check, troubleshooting rows | `README.md` |
+
+Verified: `node --check` ✅, all server modules load with only `Server/node_modules` ✅. Not run: real email sending.
+
+### What you need to do
+1. Commit and push (both repos, if Render watches `Vinaykumarp2005/Event-Connect`).
+2. Render → the backend service → **Manual Deploy → Deploy latest commit**. If the build fails, the log shows why. Check that auto-deploy watches the right repo and branch (`main`).
+3. Render → Environment: `DB_URL`, `JWT_SECRET`, `USER`, `PASS`, `BASE_URL` (the Vercel client URL). For email on the free plan: create a free Brevo account → verify your Gmail as a sender → SMTP & API → API keys → set `BREVO_API_KEY` and `MAIL_FROM`.
+4. Check: Render logs show `Mailer ready: …`, and the probe in README → Deployment answers `Invalid username: …`.
+
+### 15.6 — Browser `[DOM] … autocomplete` warnings
+Added `autoComplete` to the auth inputs: Sign In `email` / `current-password`; Sign Up `username` / `email` / `tel` / `new-password`. Removes the Chrome console warnings and lets password managers fill and save correctly. Files: `SignIn.jsx`, `SignUp.jsx`. Verified: esbuild parse ✅, ESLint clean ✅.

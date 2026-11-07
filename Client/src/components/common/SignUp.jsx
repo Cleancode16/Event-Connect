@@ -133,6 +133,7 @@ export default function SignUp() {
               <input
                 type="text"
                 placeholder="johndoe"
+                autoComplete="username"
                 {...register('username', { required: true, minLength: 3, maxLength: 30 })}
                 className="field"
               />
@@ -147,6 +148,7 @@ export default function SignUp() {
               <input
                 type="email"
                 placeholder="you@college.edu"
+                autoComplete="email"
                 {...register('email', { required: true })}
                 className="field"
               />
@@ -159,6 +161,7 @@ export default function SignUp() {
               <input
                 type="text"
                 placeholder="10-digit number"
+                autoComplete="tel"
                 {...register('phoneNumber', {
                   required: true,
                   minLength: 10,
@@ -179,6 +182,7 @@ export default function SignUp() {
               <input
                 type="password"
                 placeholder="Min 8 chars, letters, digits, @"
+                autoComplete="new-password"
                 {...register('password', {
                   required: 'Password is required',
                   minLength: { value: 8, message: "Password must be at least 8 characters" },

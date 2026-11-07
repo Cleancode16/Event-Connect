@@ -44,8 +44,37 @@ function getTransporter() {
   return transporter;
 }
 
+// Brevo HTTPS API (port 443). Used when BREVO_API_KEY is set, e.g. on hosts that block
+// outgoing SMTP ports (Render's free plan). Sender = MAIL_FROM or the Gmail USER, which
+// must be verified in Brevo → Senders.
+const brevoKey = () => process.env.BREVO_API_KEY || fileEnv.BREVO_API_KEY || '';
+const senderEmail = () => process.env.MAIL_FROM || fileEnv.MAIL_FROM || readConfig().user;
+
+async function sendWithBrevo({ to, subject, text, html }) {
+  const from = senderEmail();
+  if (!from) throw new Error('Set MAIL_FROM (or USER) to the sender address verified in Brevo');
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': brevoKey(), 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { name: 'Event Connect', email: from },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${body.message || res.statusText}`);
+  return { messageId: body.messageId };
+}
+
 // Called once at startup so a bad login shows up in the server console immediately
 async function verifyMailer() {
+  if (brevoKey()) {
+    console.log(`Mailer ready: Brevo API, sender ${senderEmail() || '(MAIL_FROM not set!)'}`);
+    return;
+  }
   try {
     const { user, host, port } = readConfig();
     await getTransporter().verify();
@@ -54,6 +83,8 @@ async function verifyMailer() {
     console.error('Mailer NOT ready — registration emails will fail:', e.message);
     if (/Invalid login|BadCredentials|535/i.test(e.message)) {
       console.error('Hint: PASS must be a Gmail App Password (Google Account → Security → 2-Step Verification → App passwords).');
+    } else if (/timeout|ETIMEDOUT|ECONNREFUSED|ENETUNREACH/i.test(e.message)) {
+      console.error('Hint: this host may block outgoing SMTP ports (Render free plan does). Set BREVO_API_KEY to send over HTTPS instead.');
     }
   }
 }
@@ -70,14 +101,15 @@ function verificationHtml(link) {
 
 // Throws on failure so callers can tell the user the truth
 async function sendVerificationEmail(to, link) {
-  const { user } = readConfig();
-  const info = await getTransporter().sendMail({
-    from: `"Event Connect" <${user}>`,
+  const message = {
     to,
     subject: 'Verify your Event Connect email',
     text: `Verify your email to finish creating your Event Connect account:\n\n${link}\n\nThis link expires in 1 hour.`,
     html: verificationHtml(link),
-  });
+  };
+  const info = brevoKey()
+    ? await sendWithBrevo(message)
+    : await getTransporter().sendMail({ ...message, from: `"Event Connect" <${readConfig().user}>` });
   console.log(`Verification email sent to ${to} (${info.messageId})`);
   return info;
 }

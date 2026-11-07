@@ -7,7 +7,6 @@ const {verifyUser}=require('../middlewares/verifyUser');
 const {Organizer}=require('../models/organizer.model');
 const {Events}=require('../models/event.model');
 const {Student}=require('../models/student.model');
-const { useState } = require('react');
 const { error } = require('console');
 const validEventData=(req,res,next)=>{
 const {eventName,description,maxLimit,category,faqs,startDate,endDate,registrationFee,venue,keyTakeAways,isApproved,rewardPoints,organizer,registrationForm,registrationEndDate,endTime,venueAddress}=req.body;
