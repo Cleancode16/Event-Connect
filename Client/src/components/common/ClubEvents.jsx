@@ -37,7 +37,7 @@ function ClubEvents() {
     if (clubById) {
       getEvents();
     }
-  }, []);
+  }, [clubById]);
 function geteventdetails(eventId){
   if (user?.email) {
     navigate(`/student-profile/${user.email}/viewevent/${eventId}`);

@@ -360,3 +360,36 @@ Verified: `node --check` on all changed server files ✅; esbuild parse of SignI
 2. Sign up a new student → message "We sent a verification link to …" → you land on Sign In → email arrives (check spam) → click → "verified" → sign in.
 3. Sign in with an unverified account → info toast "Please verify your email first. We sent a new link…" and a new email.
 4. Sign up again with the same email → "An account with this email already exists".
+
+---
+
+## Phase 14 — Fix the errors in the project (done — please test)
+
+### Lint: 37 errors → 0
+| # | Problem | Fix | Files |
+|---|---|---|---|
+| 14.1 | 29 false "unused" errors: `motion` (used as `<motion.div>`) and `Icon` (used as `<Icon/>`). The config has no React plugin, so ESLint couldn't see JSX usage | Small local rule `local/jsx-uses-vars` in the config (same job as `eslint-plugin-react/jsx-uses-vars`, no new dependency) | `Client/eslint.config.js` |
+| 14.2 | Dead `handleFormSubmit` (a leftover copy of PostEvent's create) | Removed | `common/EventsById.jsx` |
+| 14.3 | `commentEdit` state set but never read; unused `useLocation` | Removed | `common/EventsById.jsx` |
+| 14.4 | Caught errors discarded (`catch(e)` unused) | `console.error(e)` before the alert | `EventsById.jsx`, `organizer/FetchEvents.jsx` |
+| 14.5 | Unused `user` / `userAtom` / `useRecoilValue` | Removed | `organizer/PostEvent.jsx` |
+| 14.6 | Unused `createRoutesFromElements` import | Removed | `main.jsx` |
+| 14.7 | `useEffect` missing `clubById` dependency: opening another club kept the old club's events | `[clubById]` | `common/ClubEvents.jsx` |
+
+Remaining: 5 `react-refresh/only-export-components` warnings (dev hot-reload hints for files that export helpers next to components). Harmless; left as is.
+
+### Runtime errors
+| # | Problem | Fix | File |
+|---|---|---|---|
+| 14.8 | Server crashed on a fresh clone: `Auth.js` required `bcrypt`, which isn't in `package.json` (worked here only via `~/node_modules`) | `require('bcryptjs')`, the declared dependency. It verifies existing `$2b$` hashes, so current accounts still sign in | `Server/apis/Auth.js` |
+| 14.9 | `validPerson` / `validAdmin` never responded when the user wasn't an organizer/admin, so the request hung | Return 403 with a message | `Server/apis/Event.js`, `Server/apis/Admin.js` |
+| 14.10 | Admin sign-in landed on `/admin-profile/<username>`, which had no index route, so the content area was empty | Index route → `AdminDashBoard` | `Client/src/main.jsx` |
+| 14.11 | `GET /event/students/enroll/:eventId` was public: anyone could list enrolled students | Now `verifyUser, validPerson` (organizers only). The participants page already sends the token | `Server/apis/Event.js` |
+
+README updated (lint status, API table, routes, known issues, troubleshooting, starter tasks).
+
+### Verification (14.12)
+- ESLint (project config): **0 errors**, 5 warnings ✅
+- `vite build` to a temp folder: 8913 modules, built OK ✅
+- `node --check` on every server file ✅; `bcryptjs` hash + compare round-trip ✅
+- Not run: the dev server / browser (you test): sign in as student, organizer and admin; open Participants; open two different clubs from the Gallery.

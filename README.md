@@ -115,7 +115,6 @@ cd Event-Connect
 ```bash
 cd Server
 npm install
-npm install bcrypt     # Auth.js requires 'bcrypt', which is not in package.json (see Known Issues)
 # create Server/.env (see Environment Variables)
 npm start              # node server.js → "server is running ... on port 4000"
 ```
@@ -267,7 +266,7 @@ Every other feature follows the same pattern: **page component → axios call �
 - **Three roles**: Student, Organizer, Admin, each with its own signup/signin flow.
 - **Email verification**: on signup, a random 32-byte token is stored and a verification link is emailed via Nodemailer (Gmail SMTP). The token expires automatically after **1 hour** (MongoDB TTL index).
 - **Re-send on login**: if an unverified user tries to sign in, a fresh verification email is sent and login is blocked.
-- **Password hashing** with bcrypt.
+- **Password hashing** with bcryptjs.
 - **JWT auth**: the token is sent in the `Authorization` header. Organizer tokens expire after 1 hour.
 - **Role-based access control**: `verifyUser` middleware decodes the JWT, then route-level guards (`validPerson`, `validAdmin`) check that the user id belongs to the right collection.
 - **Request validation** with Zod schemas (signup, signin). An event schema (`validEventData`) is also defined in `Event.js` but isn't attached to the create route yet.
@@ -1097,7 +1096,7 @@ Base URL: `http://localhost:<port>`. 🔒 means the route needs the header `Auth
 | PUT | `/event/app/v1/update/student/:eventId` | 🔒 | `{enroll:true,name,rewardPoints}` enrolls; `{content,name}` adds a comment |
 | PUT | `/event/app/v1/comment/update/:eventId/:commentId` | 🔒 Owner | Edit your own comment `{text}` |
 | DELETE | `/event/app/v1/comment/delete/:eventId/:commentId` | 🔒 Owner | Delete your own comment |
-| GET | `/event/students/enroll/:eventId` | – | Students enrolled in an event (password excluded) |
+| GET | `/event/students/enroll/:eventId` | 🔒 Organizer | Students enrolled in an event (password excluded) |
 
 ### `/student`
 
@@ -1155,7 +1154,8 @@ Base URL: `http://localhost:<port>`. 🔒 means the route needs the header `Auth
 | `…/view/calender` | Customcalender | Organizer |
 | `…/view/organisercalender` | OrganiserCalender | Organizer |
 | `…/getevents` | FetchEvents | Organizer |
-| `/admin-profile/:emailId/dashboard` | AdminDashBoard | Admin |
+| `/admin-profile/:emailId` | AdminDashBoard (index) | Admin |
+| `…/dashboard` | AdminDashBoard | Admin |
 | `…/manageEvents` | ManageEvents | Admin |
 | `…/events` | Events | Admin |
 | `…/viewevent/:eventById` | EventsById | Admin |
@@ -1237,7 +1237,7 @@ Uniqueness is enforced by MongoDB indexes: username, email, and phone number per
 ### Checks before you push (from `Client/`)
 | Check | Command | Catches |
 |---|---|---|
-| Lint (uses the project config) | `npx eslint src` | Undefined variables, missing imports, hook mistakes. The codebase already has ~37 lint errors (mostly unused variables), so check that you add **no new** ones, especially `no-undef` |
+| Lint (uses the project config) | `npx eslint src` | Undefined variables, missing imports, unused code, hook mistakes. The project is at **0 errors**: keep it there (the 5 `react-refresh` warnings are harmless) |
 | Production build | `npm run build` | JSX syntax errors, bad imports |
 | Quick syntax check of one file | `npx esbuild src/components/common/Events.jsx --loader:.js=jsx` | Mismatched tags |
 
@@ -1268,7 +1268,6 @@ After deploying the server, update `VITE_API_URL` on Vercel and redeploy the cli
 |---|---|---|
 | Network calls go to `undefined/event/...` | `Client/.env` missing `VITE_API_URL`, or Vite not restarted | Add it, restart `npm run dev` |
 | **CORS error** on sign in/up | The client points at a port where something else is running (port 3000 is often Docker/WSL) | Make sure `VITE_API_URL` points at the Express port (4000) and the server is running |
-| Server crashes with `Cannot find module 'bcrypt'` | `Auth.js` requires `bcrypt`, which isn't in `package.json` | `cd Server && npm install bcrypt` |
 | No verification email | Wrong `USER`/`PASS`, or `PASS` isn't an App Password; mail in spam | At startup the server prints `Mailer ready: ...` or `Mailer NOT ready — ...` with the reason. Fix `.env`, restart, then sign in to get a new link |
 | Verification link says "invalid link" | Token older than 1 hour (deleted by TTL) or already used | Sign in again: a new link is emailed |
 | Sign in says "Please verify your email first" | Account not verified yet | A new link is emailed on every such sign-in attempt. Click it |
@@ -1278,22 +1277,17 @@ After deploying the server, update `VITE_API_URL` on Vercel and redeploy the cli
 | `database is successfully connected` never prints | Wrong `DB_URL`, or Atlas IP not allowed | Check the string and Atlas Network Access |
 | Refreshing a deep link on Vercel gives 404 | Missing SPA rewrite | Keep `Client/vercel.json` |
 | Content hidden under the header, or the sidebar overlaps | `RootLayout.jsx` changed | Content needs `pt-24` and `md:ml-64` / `md:ml-24` |
-| Screen is blank after admin sign-in | The admin route has no index page | Open `/admin-profile/<username>/dashboard` |
 | `X is not defined` in the browser console | Missing import (often after a merge) | `npx eslint src` points to the line |
 
 ---
 
 ## Known Issues & Limitations
 
-- **`bcrypt` vs `bcryptjs`**: `Server/apis/Auth.js` requires `bcrypt` (`Admin.js` uses `bcryptjs`), but only `bcryptjs` is in `Server/package.json`. It works on the original machine only because `bcrypt` is installed in a parent folder (`~/node_modules`). On a fresh clone, run `npm i bcrypt` in `Server/`, or change the import to `bcryptjs` (same API).
-- **Admin landing page**: sign-in navigates to `/admin-profile/<username>`, but that route has no index element, so the content area is empty. Use `/dashboard` for now.
 - **Event validation**: `validEventData` (Zod) exists in `Event.js` but isn't attached to the create route.
 - **Admin UI**: the admin dashboard shows shortcut cards, and `ManageEvents` is a "coming soon" page. Event approval and comment moderation are available only through the API.
 - **Theme transition**: the circular reveal needs the View Transitions API (Chrome/Edge). Other browsers switch themes instantly.
 - **Approval is not enforced**: events are listed whether or not `isApproved` is set.
 - **Student / admin JWTs never expire**. Only organizer tokens have `expiresIn: 1h`.
-- **Role guards**: if the user is not found, `validPerson` and `validAdmin` never respond, so the request hangs instead of returning 403.
-- `GET /event/students/enroll/:eventId` is not protected.
 - Enrollment does not check `maxLimit` or `registrationEndDate` on the server.
 - No pagination, search, rate limiting, caching, or automated tests yet.
 - `Client/src/routes.jsx` and `LandingPageLayout.jsx` are unused. The live routes are in `main.jsx`.
@@ -1335,12 +1329,10 @@ Read the code in this order. Each step builds on the previous one.
 | 5 | `index.css`, `tailwind.config.js`, `theme/useTheme.js` | Theming with CSS variables |
 
 ### Starter tasks (good first issues)
-1. Attach `validEventData` to `POST /event/app/v1/create`.
-2. Make `validPerson` / `validAdmin` return 403 when the user isn't found.
-3. Replace `require('bcrypt')` with `require('bcryptjs')` in `Auth.js`.
-4. Add an index route for `admin-profile/:emailId` that shows `AdminDashBoard`.
-5. Check `maxLimit` and `registrationEndDate` on the server when enrolling.
-6. Create a shared Axios instance (`baseURL: import.meta.env.VITE_API_URL`, auth header interceptor).
+1. Attach `validEventData` to `POST /event/app/v1/create` (check the client sends numbers, not strings).
+2. Check `maxLimit` and `registrationEndDate` on the server when enrolling.
+3. Check that an organizer owns the event in `GET /event/students/enroll/:eventId`.
+4. Create a shared Axios instance (`baseURL: import.meta.env.VITE_API_URL`, auth header interceptor).
 
 ---
 

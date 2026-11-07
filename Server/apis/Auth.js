@@ -1,7 +1,7 @@
 const exp=require('express');
 const authRouter=exp.Router();
 const jwt=require('jsonwebtoken');
-const bcrypt=require('bcrypt');
+const bcrypt=require('bcryptjs'); // bcryptjs is the dependency in package.json; reads existing bcrypt hashes
 const mongoose=require('mongoose');
 const {Student}=require('../models/student.model')
 const z=require('zod');

@@ -49,8 +49,10 @@ const validPerson=async(req,res,next)=>{
   const response=await Organizer.findById(req.userId
   )
   if(response){
-  next();
+  return next();
   }
+  // Not an organizer: answer instead of leaving the request hanging
+  return res.status(403).json({ message:"Only organizers can do this" })
   }catch(e){
     res.status(411).json({
       message:"unauthorized access"
@@ -380,7 +382,7 @@ eventApp.put('/app/v1/comment/update/:eventId/:commentId', verifyUser, async (re
   }
 });
 
-eventApp.get('/students/enroll/:eventId',async(req,res)=>{
+eventApp.get('/students/enroll/:eventId', verifyUser, validPerson,async(req,res)=>{
   const {eventId}=req.params;
   try{
     const students=await Student.find({eventsEnrolled:eventId}).select('-password');
